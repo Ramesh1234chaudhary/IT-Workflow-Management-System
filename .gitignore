@@ -1,0 +1,9 @@
+# Editor and OS files. Project-specific rules live in client/.gitignore and
+# server/.gitignore.
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*

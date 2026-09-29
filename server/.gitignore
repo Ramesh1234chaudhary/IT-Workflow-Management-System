@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+
+# test / coverage
+coverage/
+
+# environment — keep .env.example, never commit real secrets
+.env
+.env.local
+.env.*.local
+
+# uploaded documents (the folder itself is tracked via .gitkeep)
+uploads/*
+!uploads/.gitkeep
+
+# logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# TypeScript incremental build info
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# editor / tooling scratch files
+tsc_output*.txt
