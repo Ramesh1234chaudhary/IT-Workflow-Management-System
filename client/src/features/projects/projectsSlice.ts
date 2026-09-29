@@ -74,6 +74,12 @@ const initialState: ProjectsState = {
   lastCreated: null,
 };
 
+const READ_ONLY_THUNKS = ['projects/fetchAll', 'projects/fetchOne', 'projects/options'];
+
+/** True for the thunks that mutate, so they alone drive `actionStatus`. */
+const isProjectWrite = (type: string): boolean =>
+  type.startsWith('projects/') && !READ_ONLY_THUNKS.some((name) => type === `${name}/pending` || type === `${name}/rejected` || type === `${name}/fulfilled`);
+
 const projectsSlice = createSlice({
   name: 'projects',
   initialState,
@@ -145,14 +151,17 @@ const projectsSlice = createSlice({
         state.actionStatus = 'succeeded';
       })
       .addMatcher(
-        (a) => a.type.startsWith('projects/') && a.type.endsWith('/pending'),
+        // Read thunks must not touch actionStatus: the dashboard and the list
+        // page both fetch the project list on mount, and a form that shares
+        // this flag would sit disabled forever once that request settled.
+        (a) => isProjectWrite(a.type) && a.type.endsWith('/pending'),
         (state) => {
           state.actionStatus = 'loading';
           state.actionError = null;
         },
       )
       .addMatcher(
-        (a) => a.type.startsWith('projects/') && a.type.endsWith('/rejected') && a.type !== 'projects/fetchAll/rejected',
+        (a) => isProjectWrite(a.type) && a.type.endsWith('/rejected'),
         (state, action: UnknownAction & { payload?: NormalisedApiError }) => {
           state.actionStatus = 'failed';
           state.actionError = action.payload?.message ?? null;

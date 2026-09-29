@@ -333,10 +333,23 @@ export async function reassignUserAssignments(userId: string, { newOwnerId, proj
   return { reassigned: moved.length, from: user.name, to: newOwner.name, stages: moved };
 }
 
+/**
+ * Projects a reassignment may be limited to.
+ *
+ * A full-scope actor reaches every project, so the scope filter only applies
+ * when the actor is restricted. The result is a flat list — the caller embeds
+ * it directly in the response, and a nested { projects, total } container here
+ * would surface as `projects.projects` on the client.
+ */
 export async function accessibleProjects(actor: AuthUser | null) {
-  if (hasFullProjectScope(actor)) return { projects: [], total: 0 };
-  const projects = await Project.find(buildProjectScope(actor)).select('name code status').lean();
-  return { projects, total: projects.length };
+  const filter = hasFullProjectScope(actor) ? {} : buildProjectScope(actor);
+  const projects = await Project.find(filter).select('name code status').lean();
+  return projects.map((p) => ({
+    id: String(p._id),
+    name: p.name,
+    code: p.code,
+    status: p.status,
+  }));
 }
 
 /** Whether the user can be deactivated right now, and what blocks it. */

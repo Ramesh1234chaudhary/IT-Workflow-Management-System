@@ -60,12 +60,12 @@ export default function ReassignModal({ open, onClose, onReassigned, targetUser 
   const busy = actionStatus === 'loading';
 
   useEffect(() => {
-    if (open) {
+    if (open && targetUser) {
       setNewOwnerId('');
       setProjectId('');
       setNote('');
       setDeactivating(false);
-      dispatch(fetchUserAssignments(targetUser!.id));
+      dispatch(fetchUserAssignments(targetUser.id));
       dispatch(fetchReassignTargets());
     }
   }, [open, targetUser, dispatch]);
@@ -107,8 +107,9 @@ export default function ReassignModal({ open, onClose, onReassigned, targetUser 
     enqueueSnackbar(result.payload?.message || 'Deactivation failed', { variant: 'error' });
   };
 
-  const filtered = projectId ? assignments.stages.filter((s) => s.project?.id === projectId) : assignments.stages;
-  const remaining = assignments.count;
+  const assignmentStages = assignments?.stages ?? [];
+  const filtered = projectId ? assignmentStages.filter((s) => s.project?.id === projectId) : assignmentStages;
+  const remaining = assignments?.count ?? 0;
 
   return (
     <Dialog open={open} onClose={busy ? undefined : onClose} fullWidth maxWidth="md">
@@ -120,8 +121,8 @@ export default function ReassignModal({ open, onClose, onReassigned, targetUser 
       <DialogContent dividers>
         <Stack spacing={2.5}>
           <Alert severity="warning">
-            <strong>{targetUser.name}</strong> owns {assignments.count} active stage assignment
-            {assignments.count === 1 ? '' : 's'}. The API returned <code>409 Conflict</code>; move every stage to another
+            <strong>{targetUser.name}</strong> owns {remaining} active stage assignment
+            {remaining === 1 ? '' : 's'}. The API returned <code>409 Conflict</code>; move every stage to another
             user first. Stage statuses are never changed by a reassignment.
           </Alert>
 
@@ -154,7 +155,7 @@ export default function ReassignModal({ open, onClose, onReassigned, targetUser 
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
               >
-                <MenuItem value="">All projects ({assignments.stages.length})</MenuItem>
+                <MenuItem value="">All projects ({assignmentStages.length})</MenuItem>
                 {scopeProjects.map((p) => (
                   <MenuItem key={p.id} value={p.id}>
                     {p.name}
@@ -176,7 +177,7 @@ export default function ReassignModal({ open, onClose, onReassigned, targetUser 
           <Box>
             <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
               <Typography variant="subtitle2">
-                Active assignments ({filtered.length} of {assignments.stages.length})
+                Active assignments ({filtered.length} of {assignmentStages.length})
               </Typography>
               {remaining > 0 && <Chip size="small" color="error" label={`${remaining} blocking`} />}
             </Stack>

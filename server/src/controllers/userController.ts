@@ -131,7 +131,8 @@ export const reassignTargets = asyncHandler(async (req: Request, res: Response) 
     userService.getAssignableUsers(user),
     userService.accessibleProjects(user),
   ]);
-  return res.status(HTTP_STATUS.OK).json({ success: true, users, projects });
+  // Serialised like /users/assignable, so the pickers read `id` like the rest of the UI.
+  return res.status(HTTP_STATUS.OK).json({ success: true, users: users.map(publicUser), projects });
 });
 
 export default {

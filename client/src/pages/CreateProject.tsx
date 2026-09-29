@@ -39,7 +39,6 @@ import * as Yup from 'yup';
 
 import PageHeader from '../components/PageHeader';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
-import { formatDate } from '../utils/format';
 import { selectClientUsers, selectInternalUsers } from '../utils/selectors';
 import { fetchAssignableUsers } from '../features/users/usersSlice';
 import { fetchTemplates } from '../features/sop/sopSlice';
@@ -64,14 +63,17 @@ interface FormValues {
 /** The user directory entries carry the role and job title the pickers display. */
 type DirectoryUser = UserSummary & { role?: Role | null; jobTitle?: string | null };
 
-/** `POST /projects/preview` answers with the template and version it resolved. */
+/**
+ * `POST /projects/preview` answers with the template name and the bare version
+ * number it resolved, not a nested template/version document. Stage rows use
+ * `stageKey` — the field is `key` only on the SOP template itself.
+ */
 type StagePreview = {
-  totalStages: number;
+  templateName: string | null;
+  version: number | null;
   clientVisibleStages: number;
   internalStages: number;
-  template?: { id?: string; name?: string } | null;
-  version?: { version: number; publishedAt?: string | null } | null;
-  stages: SopStageDefinition[];
+  stages: (SopStageDefinition & { stageKey?: string })[];
 };
 
 const schema = Yup.object({
@@ -452,14 +454,13 @@ export default function CreateProject() {
               ) : (
                 <>
                   <Alert severity="success" sx={{ mb: 2 }}>
-                    <strong>{preview.totalStages}</strong> stages will be created from{' '}
-                    <strong>{preview.template?.name}</strong> version <strong>v{preview.version?.version}</strong>.
+                    <strong>{preview.stages.length}</strong> stages will be created from{' '}
+                    <strong>{preview.templateName}</strong> version <strong>v{preview.version}</strong>.
                   </Alert>
 
                   <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
                     <Chip size="small" color="success" label={`${preview.clientVisibleStages} client visible`} />
                     <Chip size="small" label={`${preview.internalStages} internal only`} />
-                    <Chip size="small" variant="outlined" label={`Published ${formatDate(preview.version?.publishedAt)}`} />
                   </Stack>
 
                   <Table size="small">
@@ -471,15 +472,15 @@ export default function CreateProject() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {preview.stages.map((stage) => (
-                        <TableRow key={stage.key}>
-                          <TableCell>{stage.order}</TableCell>
+                      {preview.stages.map((stage, index) => (
+                        <TableRow key={stage.stageKey ?? stage.name}>
+                          <TableCell>{stage.order ?? index + 1}</TableCell>
                           <TableCell>
                             <Typography variant="body2" fontWeight={600}>
                               {stage.name}
                             </Typography>
                             <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }}>
-                              <Chip size="small" label={stage.key} />
+                              <Chip size="small" label={stage.stageKey ?? '—'} />
                               {Boolean(stage.dependsOn?.length) && (
                                 <Chip size="small" variant="outlined" color="info" label={`deps: ${stage.dependsOn?.join(',')}`} />
                               )}

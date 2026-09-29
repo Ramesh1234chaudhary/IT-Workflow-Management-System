@@ -149,7 +149,7 @@ export const createProjectSchema: Joi.ObjectSchema = Joi.object({
   members: Joi.array().items(objectId).default([]),
   priority: Joi.string().valid(...PRIORITY_VALUES).default('Medium'),
   startDate: Joi.date(),
-  targetEndDate: Joi.date(),
+  targetEndDate: Joi.date().allow(null),
   internalRemarks: Joi.string().trim().max(2000).allow('').default(''),
   tags: Joi.array().items(Joi.string().trim().max(40)).default([]),
 });
@@ -179,7 +179,10 @@ export const listProjectsSchema: Joi.ObjectSchema = Joi.object({
 export const previewProjectSchema: Joi.ObjectSchema = Joi.object({
   sopTemplate: optionalObjectId.default(''),
   startDate: Joi.date(),
-  targetEndDate: Joi.date(),
+  // The stage generator spreads the window between these two dates, so an
+  // absent end date is legitimate: the model defaults it to null and the
+  // update schema already clears it to null.
+  targetEndDate: Joi.date().allow(null),
 });
 
 export const assignStagesSchema: Joi.ObjectSchema = Joi.object({
