@@ -149,14 +149,6 @@ const usersSlice = createSlice({
         state.actionStatus = 'succeeded';
         state.deactivationBlock = null;
       })
-      /**
-       * Deactivation conflict: the API answered 409 because the user still owns
-       * active stage assignments. The payload carries them so the UI can open the
-       * Reassign modal and block deactivation until they are moved.
-       *
-       * Registered before the matchers so the specific 409 handling wins over the
-       * generic "any pending users/* action flips actionStatus" rule.
-       */
       .addCase(deactivateUser.fulfilled, (state, action) => {
         state.actionStatus = 'succeeded';
         state.deactivationBlock = null;
@@ -172,6 +164,12 @@ const usersSlice = createSlice({
             userId: action.meta.arg.id,
             reason: action.meta.arg.body?.reason || '',
           };
+
+          // The conflict response already includes the authoritative assignment
+          // snapshot. Hydrate it immediately so the modal does not briefly show
+          // zero/stale assignments while its follow-up request is in flight.
+          const details = payload.details as { assignments?: UserAssignments } | null | undefined;
+          if (details?.assignments) state.assignments = details.assignments;
         } else {
           state.deactivationBlock = null;
         }
