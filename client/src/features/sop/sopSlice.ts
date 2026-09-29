@@ -68,6 +68,14 @@ const upsertTemplate = (state: SopState, template: SopTemplate) => {
   state.current = template;
 };
 
+/** Thunks that only read, so they must never claim the shared action flag. */
+const READ_ONLY_SOP_THUNKS = ['sop/fetchAll', 'sop/fetchOne', 'sop/versions'];
+
+const isSopWrite = (type: string): boolean => {
+  const name = type.replace(/\/(pending|fulfilled|rejected)$/, '');
+  return type.startsWith('sop/') && !READ_ONLY_SOP_THUNKS.includes(name);
+};
+
 const sopSlice = createSlice({
   name: 'sop',
   initialState,
@@ -140,17 +148,19 @@ const sopSlice = createSlice({
         upsertTemplate(state, action.payload.template);
       })
       .addMatcher(
-        (a) => a.type.startsWith('sop/') && a.type.endsWith('/pending'),
+        // Reads must not claim the shared action flag. The rejected matcher
+        // below already exempts the read thunks, but the pending one did not,
+        // so listing templates on mount left actionStatus on 'loading' with
+        // nothing in flight — and every SOP button is gated on it, Publish
+        // included.
+        (a) => isSopWrite(a.type) && a.type.endsWith('/pending'),
         (state) => {
           state.actionStatus = 'loading';
           state.actionError = null;
         },
       )
       .addMatcher(
-        (a) =>
-          a.type.startsWith('sop/') &&
-          a.type.endsWith('/rejected') &&
-          !['sop/fetchAll/rejected', 'sop/fetchOne/rejected'].includes(a.type),
+        (a) => isSopWrite(a.type) && a.type.endsWith('/rejected'),
         (state, action: UnknownAction & { payload?: NormalisedApiError }) => {
           state.actionStatus = 'failed';
           state.actionError = action.payload?.message ?? null;

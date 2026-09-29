@@ -1,4 +1,4 @@
-import { createSlice, type PayloadAction, type UnknownAction } from '@reduxjs/toolkit';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import {
   projectsApi,
   type CreateProjectPayload,
@@ -73,12 +73,6 @@ const initialState: ProjectsState = {
   preview: null,
   lastCreated: null,
 };
-
-const READ_ONLY_THUNKS = ['projects/fetchAll', 'projects/fetchOne', 'projects/options'];
-
-/** True for the thunks that mutate, so they alone drive `actionStatus`. */
-const isProjectWrite = (type: string): boolean =>
-  type.startsWith('projects/') && !READ_ONLY_THUNKS.some((name) => type === `${name}/pending` || type === `${name}/rejected` || type === `${name}/fulfilled`);
 
 const projectsSlice = createSlice({
   name: 'projects',

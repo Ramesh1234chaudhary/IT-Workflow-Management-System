@@ -71,6 +71,20 @@ export interface UsersState {
   deactivationPreview: { user: User; assignments: UserAssignments } | null;
 }
 
+/** Thunks that only read, so they must never claim the shared action flag. */
+const READ_ONLY_USER_THUNKS = [
+  'users/fetch',
+  'users/assignable',
+  'users/assignments',
+  'users/reassignTargets',
+  'users/deactivationPreview',
+];
+
+const isUserWrite = (type: string): boolean => {
+  const name = type.replace(/\/(pending|fulfilled|rejected)$/, '');
+  return type.startsWith('users/') && !READ_ONLY_USER_THUNKS.includes(name);
+};
+
 const initialState: UsersState = {
   items: [],
   pagination: { page: 1, limit: 20, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false },
@@ -175,7 +189,11 @@ const usersSlice = createSlice({
         }
       })
       .addMatcher(
-        (action) => action.type.startsWith('users/') && action.type.endsWith('/pending'),
+        // Read thunks must not touch actionStatus. The users page loads its list
+        // on mount, and every action button there is gated on this flag, so
+        // without this the list request would leave Deactivate, Reactivate,
+        // Delete and the whole user dialog disabled for the rest of the session.
+        (action) => isUserWrite(action.type) && action.type.endsWith('/pending'),
         (state) => {
           state.actionStatus = 'loading';
           state.actionError = null;
