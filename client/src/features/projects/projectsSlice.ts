@@ -122,6 +122,7 @@ const projectsSlice = createSlice({
       })
       .addCase(previewStages.pending, (state) => {
         state.actionStatus = 'loading';
+        state.actionError = null;
       })
       .addCase(previewStages.fulfilled, (state, action) => {
         state.actionStatus = 'succeeded';
@@ -131,10 +132,22 @@ const projectsSlice = createSlice({
         state.actionStatus = 'failed';
         state.actionError = (action.payload as NormalisedApiError | undefined)?.message ?? null;
       })
+      .addCase(createProject.pending, (state) => {
+        state.actionStatus = 'loading';
+        state.actionError = null;
+      })
       .addCase(createProject.fulfilled, (state, action) => {
         state.actionStatus = 'succeeded';
         state.lastCreated = action.payload;
         state.items.unshift(action.payload.project);
+      })
+      .addCase(createProject.rejected, (state, action) => {
+        state.actionStatus = 'failed';
+        state.actionError = (action.payload as NormalisedApiError | undefined)?.message ?? null;
+      })
+      .addCase(updateProject.pending, (state) => {
+        state.actionStatus = 'loading';
+        state.actionError = null;
       })
       .addCase(updateProject.fulfilled, (state, action) => {
         state.actionStatus = 'succeeded';
@@ -142,31 +155,34 @@ const projectsSlice = createSlice({
         const idx = state.items.findIndex((p) => p.id === action.payload.project.id);
         if (idx >= 0) state.items[idx] = action.payload.project;
       })
+      .addCase(updateProject.rejected, (state, action) => {
+        state.actionStatus = 'failed';
+        state.actionError = (action.payload as NormalisedApiError | undefined)?.message ?? null;
+      })
+      .addCase(deleteProject.pending, (state) => {
+        state.actionStatus = 'loading';
+        state.actionError = null;
+      })
       .addCase(deleteProject.fulfilled, (state, action) => {
         state.actionStatus = 'succeeded';
         state.items = state.items.filter((p) => p.id !== action.meta.arg);
         if (state.current?.id === action.meta.arg) state.current = null;
       })
+      .addCase(deleteProject.rejected, (state, action) => {
+        state.actionStatus = 'failed';
+        state.actionError = (action.payload as NormalisedApiError | undefined)?.message ?? null;
+      })
+      .addCase(assignStages.pending, (state) => {
+        state.actionStatus = 'loading';
+        state.actionError = null;
+      })
       .addCase(assignStages.fulfilled, (state) => {
         state.actionStatus = 'succeeded';
       })
-      .addMatcher(
-        // Read thunks must not touch actionStatus: the dashboard and the list
-        // page both fetch the project list on mount, and a form that shares
-        // this flag would sit disabled forever once that request settled.
-        (a) => isProjectWrite(a.type) && a.type.endsWith('/pending'),
-        (state) => {
-          state.actionStatus = 'loading';
-          state.actionError = null;
-        },
-      )
-      .addMatcher(
-        (a) => isProjectWrite(a.type) && a.type.endsWith('/rejected'),
-        (state, action: UnknownAction & { payload?: NormalisedApiError }) => {
-          state.actionStatus = 'failed';
-          state.actionError = action.payload?.message ?? null;
-        },
-      );
+      .addCase(assignStages.rejected, (state, action) => {
+        state.actionStatus = 'failed';
+        state.actionError = (action.payload as NormalisedApiError | undefined)?.message ?? null;
+      });
   },
 });
 
