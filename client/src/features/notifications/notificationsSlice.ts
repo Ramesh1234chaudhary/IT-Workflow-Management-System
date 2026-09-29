@@ -40,6 +40,11 @@ const notificationsSlice = createSlice({
         state.items = action.payload.items;
         state.unread = action.payload.unread;
       })
+      // Without this the pending flag set above is never cleared on a failed
+      // fetch, so the bell spins for the rest of the session.
+      .addCase(fetchNotifications.rejected, (state) => {
+        state.status = 'failed';
+      })
       .addCase(markNotificationRead.fulfilled, (state, action) => {
         const idx = state.items.findIndex((n) => n.id === action.payload.notification.id);
         if (idx >= 0 && !state.items[idx].isRead) {
