@@ -67,6 +67,14 @@ type BoardStageRow = BoardStage & { projectId?: string };
 type BoardProject = Project & { _id?: string };
 
 /**
+ * The board is the one endpoint that hands back raw stage documents rather than
+ * serialised ones, so a stage carries `_id` and no `id`. Reading `stage.id`
+ * here yields undefined and every status change is rejected as an invalid id.
+ */
+const stageIdOf = (stage: BoardStageRow): string =>
+  (stage as unknown as { _id?: string })._id || stage.id;
+
+/**
  * `GET /workflow/board` populates `project` on every stage, so it arrives as an
  * object even though the domain type models the field as the raw id.
  */
@@ -157,7 +165,7 @@ export default function WorkflowBoard() {
     };
 
     const result = await dispatch(
-      updateStageStatus({ projectId, stageId: stage.id, body: payload, optimistic, rollback }),
+      updateStageStatus({ projectId, stageId: stageIdOf(stage), body: payload, optimistic, rollback }),
     );
 
     if (updateStageStatus.fulfilled.match(result)) {
@@ -172,10 +180,10 @@ export default function WorkflowBoard() {
   const handleShowHistory = (stage: BoardStage) => {
     setHistoryModal({ open: true, stage: stage as BoardStageRow });
     const projectId = projectIdOf(stage as BoardStageRow) as string;
-    dispatch(fetchStageHistory({ projectId, stageId: stage.id, params: { limit: 50 } }));
+    dispatch(fetchStageHistory({ projectId, stageId: stageIdOf(stage), params: { limit: 50 } }));
   };
 
-  const saving = statusModal.open && pendingIds.includes(statusModal.stage?.id as string);
+  const saving = statusModal.open && pendingIds.includes(stageIdOf(statusModal.stage as BoardStageRow));
 
   return (
     <Box>
@@ -336,7 +344,7 @@ export default function WorkflowBoard() {
       {visibleStages.length > 0 && (
         <Grid container spacing={2}>
           {visibleStages.map((stage) => (
-            <Grid item xs={12} sm={6} lg={4} key={stage.id}>
+            <Grid item xs={12} sm={6} lg={4} key={stageIdOf(stage)}>
               <StageCard
                 stage={stage}
                 project={projectById.get(String(projectRefOf(stage)?._id || projectRefOf(stage)?.id))}
@@ -344,7 +352,7 @@ export default function WorkflowBoard() {
                 onUpdateStatus={(s) => setStatusModal({ open: true, stage: s as BoardStageRow })}
                 onShowHistory={canReadHistory ? handleShowHistory : undefined}
                 actions={
-                  pendingIds.includes(stage.id) ? (
+                  pendingIds.includes(stageIdOf(stage)) ? (
                     <Chip size="small" label="Saving…" color="primary" variant="outlined" />
                   ) : null
                 }
@@ -373,7 +381,7 @@ export default function WorkflowBoard() {
           const stage = historyModal.stage;
           if (!stage) return;
           const projectId = projectIdOf(stage) as string;
-          dispatch(fetchStageHistory({ projectId, stageId: stage.id, params: { limit: 50 } }));
+          dispatch(fetchStageHistory({ projectId, stageId: stageIdOf(stage), params: { limit: 50 } }));
         }}
       />
 

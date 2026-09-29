@@ -20,6 +20,7 @@ import { notifyStageAssignment, notifyStageStatusChange } from './notificationSe
 import * as integrationService from './integrations/integrationService';
 import { parsePagination } from '../utils/helpers';
 import type { AuditAction, AuthUser, EntityType, StageStatus } from '../types/domain';
+import { computeStageProgress } from '../utils/serializers';
 import type { IProject, IProjectWorkflowStage, ListQuery } from '../types/models';
 
 /** Contract of `recordAudit`, pinned here so the audit calls stay type checked. */
@@ -395,7 +396,23 @@ export async function getBoardData(userContext: AuthUser | null, query: ListQuer
     .sort({ dueDate: 1, order: 1 })
     .lean();
 
-  return stages;
+  // Lean documents only carry `_id`. Every other endpoint in the API exposes
+  // `id` as well, so the board matches rather than making each caller special
+  // case it.
+  return stages.map((stage) => {
+    const s = stage as unknown as Record<string, unknown>;
+    const project = s.project as (Record<string, unknown> & { _id?: unknown }) | null;
+    const owner = s.owner as (Record<string, unknown> & { _id?: unknown }) | null;
+    return {
+      ...s,
+      id: String(s._id),
+      // Matches the stage shape the project detail endpoint returns, so the
+      // board and the detail card agree on the same Stage type.
+      progressPercent: computeStageProgress(s as Parameters<typeof computeStageProgress>[0]),
+      ...(project ? { project: { ...project, id: String(project._id) } } : {}),
+      ...(owner ? { owner: { ...owner, id: String(owner._id) } } : {}),
+    } as unknown as typeof stage;
+  });
 }
 
 export { ACTIVE_STAGE_STATUSES };

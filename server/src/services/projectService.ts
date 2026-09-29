@@ -330,7 +330,19 @@ export async function deleteProject(id: string, { actor, req }: { actor?: AuthUs
 /** GET /api/projects/options - lightweight list for dropdowns. */
 export async function projectOptions(user: AuthUser | null) {
   const filter: Record<string, unknown> = { ...buildProjectScope(user) };
-  return Project.find(filter).select('name code status priority client').sort({ name: 1 }).lean();
+  const projects = await Project.find(filter)
+    .select('name code status priority client')
+    .sort({ name: 1 })
+    .lean();
+  // Lean documents only carry `_id`; the dropdowns in the UI read `id`.
+  return projects.map((p) => ({
+    id: String(p._id),
+    name: p.name,
+    code: p.code,
+    status: p.status,
+    priority: p.priority,
+    client: p.client ? String(p.client) : null,
+  }));
 }
 
 /** Stages the Create Project form would generate, without writing anything. */

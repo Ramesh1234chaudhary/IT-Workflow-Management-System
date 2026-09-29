@@ -16,12 +16,32 @@ const requireUser = (req: Request): AuthUser => {
 export const listStages = asyncHandler(async (req: Request, res: Response) => {
   const user = requireUser(req);
   const { project, stages } = await workflowService.listStages(req.params.projectId, user, req.query);
+  const includeInternal = canSeeInternalData(user);
   return res.status(HTTP_STATUS.OK).json({
     success: true,
     project: { id: project._id, name: project.name, code: project.code, status: project.status, priority: project.priority },
-    stages: canSeeInternalData(user)
-      ? stages
-      : stages.map((s) => ({ ...s, internalRemarks: undefined, documents: undefined, blocker: undefined, holdReason: undefined })),
+    // Lean stages carry only `_id`, but every other project endpoint exposes
+    // `id` as well, so both are added here rather than at each call site.
+    stages: stages.map((s) => {
+      const doc = s as unknown as { _id?: unknown; documents?: unknown[]; owner?: unknown };
+      const owner = doc.owner as (Record<string, unknown> & { _id?: unknown }) | null;
+      return {
+        ...s,
+        id: String(doc._id),
+        ...(owner ? { owner: { ...owner, id: String(owner._id) } } : {}),
+        ...(Array.isArray(doc.documents)
+          ? {
+              documents: (doc.documents as Record<string, unknown>[]).map((d) => ({
+                ...d,
+                id: String(d._id),
+              })),
+            }
+          : {}),
+        ...(includeInternal
+          ? {}
+          : { internalRemarks: undefined, documents: undefined, blocker: undefined, holdReason: undefined }),
+      };
+    }),
   });
 });
 
@@ -132,7 +152,7 @@ export const getBoard = asyncHandler(async (req: Request, res: Response) => {
 
   return res.status(HTTP_STATUS.OK).json({
     success: true,
-    projects: accessible,
+    projects: accessible.map((p) => ({ ...p, id: String(p._id) })),
     stages: visible,
     summary: {
       total: visible.length,

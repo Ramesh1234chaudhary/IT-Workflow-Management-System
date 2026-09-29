@@ -3,6 +3,7 @@ import type { Types } from 'mongoose';
 import { Permission, Role, User } from '../models/index';
 import type { RoleDoc } from '../models/Role';
 import ApiError from '../utils/ApiError';
+import { publicPermission } from '../utils/serializers';
 import { AUDIT_ACTIONS, ENTITY_TYPES, ACCESS_SCOPE } from '../utils/constants';
 import { recordAudit, type AuditActor } from './auditService';
 import type { AccessScope } from '../types/domain';
@@ -161,9 +162,11 @@ export async function permissionMatrix() {
   return {
     modules: Object.keys(grouped)
       .sort()
-      .map((module) => ({ module, actions: grouped[module] })),
+      // Serialised like /roles/permissions, so a matrix cell keyed on the
+      // permission id resolves the same way the role form does.
+      .map((module) => ({ module, actions: grouped[module].map((p) => publicPermission(p)!) })),
     roles: roles.map((r) => ({
-      id: r._id,
+      id: String(r._id),
       name: r.name,
       key: r.key,
       accessScope: r.accessScope,

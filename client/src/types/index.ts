@@ -70,7 +70,6 @@ export interface Project {
   priority: Priority;
   client: UserRef;
   projectManager?: UserRef | null;
-  team?: UserRef | null;
   startDate?: string | null;
   targetEndDate?: string | null;
   sopTemplate?: { id: string; name: string } | null;
@@ -81,8 +80,6 @@ export interface Project {
   stages?: Stage[];
   createdAt?: string;
   updatedAt?: string;
-  /** Present on list endpoints; tells the UI the payload is already client filtered. */
-  meta?: { filtered: boolean; scope: AccessScope };
   /** Board/dashboard aggregates, derived server side from the project's stages. */
   progressPercent?: number;
   stageCount?: number;
@@ -337,7 +334,7 @@ export interface WorkloadRow {
   id: string;
   name: string;
   email: string;
-  role?: { _id?: string; name?: string } | null;
+  role?: { id?: string; _id?: string; name?: string } | null;
   department?: string;
   team?: string;
   activeAssignments: number;

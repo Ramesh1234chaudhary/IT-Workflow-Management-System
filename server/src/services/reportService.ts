@@ -164,9 +164,27 @@ export async function workloadReport(actor: AuthUser | null) {
     total: assignments.reduce((sum, a) => sum + a.count, 0),
     items: assignments
       .filter((a) => nameMap.has(String(a._id)))
-      .map((a) => ({ ...nameMap.get(String(a._id))!, activeAssignments: a.count })),
+      .map((a) => {
+        // The workload table keys rows by `id`, which a lean document does not
+        // have, so the shape is mapped explicitly instead of spread.
+        const user = nameMap.get(String(a._id))!;
+        return {
+          id: String(user._id),
+          name: user.name,
+          email: user.email,
+          role: isPopulatedRole(user.role)
+            ? { id: String(user.role._id), _id: String(user.role._id), name: user.role.name }
+            : null,
+          department: user.department ?? null,
+          team: user.team ?? null,
+          activeAssignments: a.count,
+        };
+      }),
   };
 }
+
+const isPopulatedRole = (role: unknown): role is { _id: unknown; name: string } =>
+  !!role && typeof role === 'object' && 'name' in role;
 
 export async function summaryReport(actor: AuthUser | null) {
   const scope = hasFullProjectScope(actor) ? {} : buildProjectScope(actor);

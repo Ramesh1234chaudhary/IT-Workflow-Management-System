@@ -225,6 +225,7 @@ export interface PublicProjectView {
   members: Array<PublicUserView | RefValue>;
   startDate: Date | null;
   targetEndDate: Date | null;
+  tags: string[];
   createdBy: PublicUserView | RefValue;
   progressPercent: number;
   stageCount: number;
@@ -571,9 +572,10 @@ export const publicProject = (
     client: isPopulated(p.client) ? publicUser(p.client) : refValue(p.client),
     projectManager: isPopulated(p.projectManager) ? publicUser(p.projectManager) : refValue(p.projectManager),
     members: (p.members || []).map((m) => (isPopulated(m) ? publicUser(m) : m)) as Array<PublicUserView | RefValue>,
-    startDate: p.startDate ?? null,
-    targetEndDate: p.targetEndDate ?? null,
-    createdBy: isPopulated(p.createdBy) ? publicUser(p.createdBy) : refValue(p.createdBy),
+      startDate: p.startDate ?? null,
+      targetEndDate: p.targetEndDate ?? null,
+      tags: (p.tags as string[] | undefined) ?? [],
+      createdBy: isPopulated(p.createdBy) ? publicUser(p.createdBy) : refValue(p.createdBy),
     progressPercent: computeProjectProgress(p.stages || []),
     stageCount: (p.stages || []).length,
     completedStageCount: (p.stages || [])

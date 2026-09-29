@@ -198,8 +198,8 @@ export interface ProjectOptions {
   name: string;
   code?: string;
   status: string;
-  stageCount: number;
-  completedStages: number;
+  priority?: string;
+  client?: string | null;
 }
 
 export const projectsApi = {
