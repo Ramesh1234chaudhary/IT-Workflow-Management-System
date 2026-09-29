@@ -138,7 +138,26 @@ export const publishSchema: Joi.ObjectSchema = Joi.object({
 
 /* -------------------------------- Projects -------------------------------- */
 
-export const createProjectSchema: Joi.ObjectSchema = Joi.object({
+/**
+ * The stage generator spreads the delivery window between these two dates, so an
+ * absent end date stays legitimate. When both are present the end cannot precede
+ * the start: Create Project already enforces that in the form, and mirroring it
+ * here keeps a direct API caller from storing a backwards window. Only the pair
+ * is compared, so a partial update carrying just one of the two still passes.
+ */
+const endOnOrAfterStart = (value: unknown, helpers: Joi.CustomHelpers): unknown => {
+  const { startDate, targetEndDate } = (value ?? {}) as { startDate?: Date; targetEndDate?: Date | null };
+  if (!startDate || !targetEndDate) return value;
+  if (targetEndDate.getTime() >= startDate.getTime()) return value;
+  return helpers.error('date.window');
+};
+
+const withDeliveryWindow = <T extends Joi.ObjectSchema>(schema: T): T =>
+  schema
+    .custom(endOnOrAfterStart)
+    .messages({ 'date.window': 'Target end date must be on or after the start date' }) as unknown as T;
+
+export const createProjectSchema: Joi.ObjectSchema = withDeliveryWindow(Joi.object({
   name: Joi.string().trim().min(3).max(150).required(),
   code: Joi.string().trim().uppercase().pattern(/^[A-Z0-9][A-Z0-9_-]*$/).min(2).max(30)
     .messages({ 'string.pattern.base': 'code may contain letters, numbers, hyphens and underscores only' }),
@@ -152,9 +171,9 @@ export const createProjectSchema: Joi.ObjectSchema = Joi.object({
   targetEndDate: Joi.date().allow(null),
   internalRemarks: Joi.string().trim().max(2000).allow('').default(''),
   tags: Joi.array().items(Joi.string().trim().max(40)).default([]),
-});
+}));
 
-export const updateProjectSchema: Joi.ObjectSchema = Joi.object({
+export const updateProjectSchema: Joi.ObjectSchema = withDeliveryWindow(Joi.object({
   name: Joi.string().trim().min(3).max(150),
   description: Joi.string().trim().max(2000).allow(''),
   status: Joi.string().valid(...PROJECT_STATUS_VALUES),
@@ -164,7 +183,7 @@ export const updateProjectSchema: Joi.ObjectSchema = Joi.object({
   startDate: Joi.date(),
   targetEndDate: Joi.date().allow(null),
   internalRemarks: Joi.string().trim().max(2000).allow(''),
-}).min(1);
+})).min(1);
 
 export const listProjectsSchema: Joi.ObjectSchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
@@ -176,14 +195,14 @@ export const listProjectsSchema: Joi.ObjectSchema = Joi.object({
   projectManager: optionalObjectId.default(''),
 }).unknown(true);
 
-export const previewProjectSchema: Joi.ObjectSchema = Joi.object({
+export const previewProjectSchema: Joi.ObjectSchema = withDeliveryWindow(Joi.object({
   sopTemplate: optionalObjectId.default(''),
   startDate: Joi.date(),
   // The stage generator spreads the window between these two dates, so an
   // absent end date is legitimate: the model defaults it to null and the
   // update schema already clears it to null.
   targetEndDate: Joi.date().allow(null),
-});
+}));
 
 export const assignStagesSchema: Joi.ObjectSchema = Joi.object({
   assignments: Joi.array()
