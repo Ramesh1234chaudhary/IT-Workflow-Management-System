@@ -2,7 +2,7 @@
  * Every API call in the app lives here so slices stay declarative and the
  * contract is easy to audit against the backend routes.
  */
-import http, { API_URL } from './httpClient';
+import http from './httpClient';
 import type { StageStatus } from '../utils/constants';
 import type {
   AuditLogEntry,
@@ -243,7 +243,16 @@ export const documentsApi = {
     }),
   versions: (documentId: string) => http.get<{ items: import('../types').DocumentVersion[] }>(`/workflow/documents/${documentId}/versions`),
   remove: (documentId: string) => http.delete<{ message: string }>(`/workflow/documents/${documentId}`),
-  downloadUrl: (documentId: string) => `${API_URL}/workflow/documents/${documentId}/download`,
+  /**
+   * Downloads must go through the authenticated axios instance, not a bare href:
+   * the access token lives in memory and is attached by the request interceptor,
+   * so a plain link or window.open would always come back 401.
+   */
+  download: (documentId: string) =>
+    http.get<Blob>(`/workflow/documents/${documentId}/download`, {
+      responseType: 'blob',
+      headers: { Accept: 'application/octet-stream' },
+    }),
 };
 
 export interface AuditFacets {

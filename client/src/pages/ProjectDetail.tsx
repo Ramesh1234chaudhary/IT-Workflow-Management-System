@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   CardContent,
+  CircularProgress,
   Chip,
   Dialog,
   DialogActions,
@@ -96,6 +97,19 @@ type DocumentRow = ProjectDocument & { clientVisible: boolean; createdAt?: strin
 type PartyUser = UserRef & { role?: Role | null };
 type AssignableUser = UserSummary & { role?: Role | null };
 
+/**
+ * When a request asks for a blob, axios leaves a failed JSON error body as an
+ * opaque Blob, so the real message has to be unwrapped before it can be shown.
+ */
+const blobErrorMessage = async (body: Blob): Promise<string> => {
+  try {
+    const parsed = JSON.parse(await body.text()) as { message?: string };
+    return parsed.message || 'Download failed';
+  } catch {
+    return 'Download failed';
+  }
+};
+
 export default function ProjectDetail() {
   // The route is `/projects/:id`, so the param is always present at runtime.
   const { id } = useParams() as { id: string };
@@ -133,6 +147,7 @@ export default function ProjectDetail() {
   }>({ open: false, stageId: '', description: '', clientVisible: false, file: null });
   const [deleteTarget, setDeleteTarget] = useState<DocumentRow | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const canUpdateStatus = can('stage', 'updateStatus');
   const canReadHistory = can('stage', 'readHistory');
@@ -236,6 +251,37 @@ export default function ProjectDetail() {
       enqueueSnackbar('Document deleted', { variant: 'success' });
     } else {
       enqueueSnackbar(result.payload?.message || 'Could not delete the document', { variant: 'error' });
+    }
+  };
+
+  /**
+   * The file is fetched through the authenticated axios client and then handed
+   * to the browser as a blob. A bare href or window.open would carry no
+   * Authorization header and the route would always answer 401, because the
+   * access token lives in memory and the refresh token is not readable by JS.
+   */
+  const handleDownload = async (doc: DocumentRow) => {
+    setDownloadingId(doc.id);
+    try {
+      const response = await documentsApi.download(doc.id);
+      const disposition = String(response.headers['content-disposition'] || '');
+      const match = /filename="?([^";]+)"?/i.exec(disposition);
+      const fileName = match ? decodeURIComponent(match[1]) : doc.originalName || doc.fileName || 'download';
+
+      const url = URL.createObjectURL(response.data);
+      const anchor = window.document.createElement('a');
+      anchor.href = url;
+      anchor.download = fileName;
+      window.document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      const body = (error as { response?: { data?: Blob } }).response?.data;
+      const message = body instanceof Blob ? await blobErrorMessage(body) : '';
+      enqueueSnackbar(message || 'Could not download the document', { variant: 'error' });
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -500,11 +546,14 @@ export default function ProjectDetail() {
                               <Tooltip title="Download">
                                 <IconButton
                                   size="small"
-                                  href={documentsApi.downloadUrl(doc.id)}
-                                  target="_blank"
-                                  rel="noopener"
+                                  onClick={() => handleDownload(doc)}
+                                  disabled={downloadingId === doc.id}
                                 >
-                                  <DownloadIcon fontSize="small" />
+                                  {downloadingId === doc.id ? (
+                                    <CircularProgress size={18} />
+                                  ) : (
+                                    <DownloadIcon fontSize="small" />
+                                  )}
                                 </IconButton>
                               </Tooltip>
                               {canDeleteDoc && (
