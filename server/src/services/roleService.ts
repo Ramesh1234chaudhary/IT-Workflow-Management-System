@@ -28,7 +28,7 @@ interface RolePayload {
 
 export async function listRoles(query: ListQuery = {}) {
   const filter: Record<string, unknown> = {};
-  if (query.isActive !== undefined) filter.isActive = query.isActive === 'true';
+  if (query.isActive) filter.isActive = query.isActive === 'true';
   return Role.find(filter)
     .populate('permissions', 'module action key description')
     .sort({ name: 1 })

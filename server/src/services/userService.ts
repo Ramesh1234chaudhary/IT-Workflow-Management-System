@@ -76,7 +76,11 @@ export async function listUsers(_actor: AuthUser | null, query: ListQuery = {}) 
   const { page, limit, skip } = parsePagination(query);
   const filter: Record<string, unknown> = {};
   if (query.role) filter.role = query.role;
-  if (query.isActive !== undefined) filter.isActive = query.isActive;
+  // The users page always sends this filter, and sends '' when "All statuses" is
+  // selected, so a truthy test is what distinguishes "not filtering" from a value.
+  // Comparing against 'true' also settles the string the validator yields into the
+  // boolean Mongoose actually needs.
+  if (query.isActive) filter.isActive = query.isActive === 'true';
   if (query.team) filter.team = query.team;
   if (query.department) filter.department = query.department;
   if (query.search) {

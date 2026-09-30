@@ -136,6 +136,7 @@ export default function RolesPermissions() {
 
   const openEdit = (role: RoleRow) => {
     setForm({
+      id: role.id,
       name: role.name,
       key: role.key,
       description: role.description || '',
