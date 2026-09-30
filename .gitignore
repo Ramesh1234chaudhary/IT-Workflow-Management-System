@@ -7,3 +7,7 @@
 Thumbs.db
 *.log
 npm-debug.log*
+
+# Local QA notes, kept on disk only and never published.
+/AUDIT_REPORT.md
+/CODE_REVIEW.md
